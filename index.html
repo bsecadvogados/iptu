@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Cliente | IPTU Família Hoffmann</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bsc-verde: #004d2c; --bsc-dourado: #c5a36b; --bsc-bg: #f3f4f6; }
+        body { background-color: var(--bsc-bg); font-family: 'Inter', system-ui, sans-serif; }
+        
+        .status-pendente { background-color: #fef08a; color: #854d0e; } 
+        .status-proximo { background-color: #fed7aa; color: #9a3412; } 
+        
+        .login-bg { background: linear-gradient(135deg, #004d2c 0%, #002a18 100%); }
+    </style>
+</head>
+<body class="text-gray-800 antialiased">
+
+    <div id="login-screen" class="min-h-screen login-bg flex flex-col items-center justify-center px-4 fixed inset-0 z-[100]">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
+            <h1 class="text-4xl font-black text-[#004d2c] tracking-tight mb-2">BSC<span class="text-[#c5a36b]">.</span></h1>
+            <h2 class="text-xl font-bold text-gray-700 uppercase tracking-wider mb-1">Acesso Restrito do Cliente</h2>
+            <p class="text-xs font-semibold text-[#c5a36b] tracking-widest uppercase mb-8">Gestão de IPTU | Família Hoffmann</p>
+            <div class="space-y-4">
+                <div>
+                    <input type="password" id="pwd-input" placeholder="Senha de Acesso" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#004d2c] focus:ring-0 outline-none text-center text-lg font-mono tracking-widest" onkeypress="handleEnter(event)">
+                    <p id="login-error" class="text-red-500 text-xs font-bold mt-2 hidden">Senha incorreta.</p>
+                </div>
+                <button onclick="authenticate()" class="w-full bg-[#004d2c] hover:bg-[#003820] text-white font-bold py-3 px-4 rounded-xl transition shadow-lg uppercase tracking-wide">Acessar Painel</button>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-6">Para fins de teste, a senha é: <strong class="text-gray-600">CLIENTE123</strong></p>
+        </div>
+    </div>
+
+    <div id="app-content" class="hidden opacity-0 transition-opacity duration-700 pb-20">
+        <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+            <div class="container mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-3xl font-black text-[#004d2c] tracking-tight">BSC<span class="text-[#c5a36b]">.</span></h1>
+                    <div class="border-l border-gray-300 pl-4">
+                        <h1 class="text-lg font-bold text-gray-800 tracking-tight">Portal do Cliente</h1>
+                        <p class="text-xs font-semibold text-[#c5a36b] uppercase tracking-widest">Família Hoffmann</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 text-sm font-medium">
+                    <a href="IPTU Familia Hoffmann - Luis Eduardo Magalhães e Porto.xlsx" download class="bg-[#c5a36b] hover:bg-[#b08d55] text-white px-5 py-2.5 rounded-lg font-bold shadow-md transition flex items-center gap-2">
+                        📥 Baixar Planilha Original
+                    </a>
+                    <button onclick="logout()" class="ml-2 text-xs text-gray-400 hover:text-red-600 font-bold underline">Sair</button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="container mx-auto py-8 px-6 space-y-8">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-[#004d2c]">
+                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Total IPTU 2026 (Projetado)</h3>
+                    <p class="text-3xl font-black text-[#004d2c]">R$ 82.434,89</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-[#c5a36b]">
+                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Imóveis / Inscrições</h3>
+                    <p class="text-3xl font-black text-gray-800">10</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-gray-400">
+                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Cidades Abrangidas</h3>
+                    <p class="text-lg font-bold text-gray-800 mt-2">Luís Eduardo Magalhães (BA)<br>Porto Nacional (TO)</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 border-b pb-4">
+                    <h2 class="text-lg font-bold text-[#004d2c]">Cronograma de Pagamentos - IPTU</h2>
+                    <input type="text" id="busca-iptu" onkeyup="pesquisarTabela()" placeholder="🔍 Buscar por imóvel ou data..." class="w-full md:w-64 border border-gray-200 rounded-lg p-2.5 outline-none focus:border-[#004d2c] text-sm">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600">
+                        <thead class="bg-gray-50 text-gray-700 uppercase font-bold text-[10px] tracking-wider border-b">
+                            <tr>
+                                <th class="px-4 py-3">Status / Vencimento</th>
+                                <th class="px-4 py-3">Contribuinte</th>
+                                <th class="px-4 py-3">Inscrição / Endereço</th>
+                                <th class="px-4 py-3">Estado</th>
+                                <th class="px-4 py-3 text-center">Tipo</th>
+                                <th class="px-4 py-3 text-right font-black">Valor (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-corpo" class="divide-y divide-gray-100">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const SECRET_KEY = "CLIENTE123";
+
+        function checkAuthStatus() { 
+            if (sessionStorage.getItem('bsc_cliente_auth') === 'true') unlockDashboard(); 
+        }
+        function handleEnter(e) { if (e.key === 'Enter') authenticate(); }
+        
+        function authenticate() {
+            if (document.getElementById('pwd-input').value === SECRET_KEY) {
+                sessionStorage.setItem('bsc_cliente_auth', 'true');
+                document.getElementById('login-error').classList.add('hidden');
+                unlockDashboard();
+            } else { 
+                document.getElementById('login-error').classList.remove('hidden'); 
+            }
+        }
+        
+        function unlockDashboard() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-content').classList.remove('hidden');
+            setTimeout(() => document.getElementById('app-content').classList.remove('opacity-0'), 50);
+            renderizarTabela();
+        }
+        
+        function logout() { 
+            sessionStorage.removeItem('bsc_cliente_auth'); 
+            window.location.reload(); 
+        }
+
+        window.onload = checkAuthStatus;
+
+        // Base de Dados Extraída da Planilha Fornecida
+        const dadosIPTU = [
+            {"estado": "BAHIA", "contribuinte": "RENITA HOFFMANN", "insc": "600900321001", "end": "RUA DORIVAL CAYMMI I, 321 CASA - LOT. MIMOSO DO OESTE QD. 87 LT. 09E10", "tipo": "COTA ÚNICA", "valor": 665.10, "vencimento": "30/04/2026", "obs": "-"},
+            {"estado": "BAHIA", "contribuinte": "RENITA HOFFMANN", "insc": "704201264001", "end": "RUA 13 DE MAIO, 1264 CASA - LOT. JARDIM PARAÍSO FASE III QD. 104 LT. 09", "tipo": "COTA ÚNICA", "valor": 1235.10, "vencimento": "30/04/2026", "obs": "-"},
+            {"estado": "BAHIA", "contribuinte": "RENITA HOFFMANN", "insc": "704800306001", "end": "RUA GLAUBER ROCHA, 306 CASA - LOT. JARDIM PARAÍSO FASE I QD. 10 LT. 04", "tipo": "COTA ÚNICA", "valor": 1046.34, "vencimento": "30/04/2026", "obs": "-"},
+            {"estado": "BAHIA", "contribuinte": "RENITA HOFFMANN", "insc": "704800306002", "end": "RUA GLAUBER ROCHA, 306 LOT. JARDIM PARAÍSO FASE I QD. 10 LT. 04", "tipo": "COTA ÚNICA", "valor": 190.28, "vencimento": "30/04/2026", "obs": "-"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "600501937001", "end": "RUA RUI BARBOSA, 1937 COMERCIO - LOT. MIMOSO DO OESTE QD. 65 LT. 03 A 05", "tipo": "COTA ÚNICA", "valor": 13728.25, "vencimento": "30/04/2026", "obs": "-"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "600501937002", "end": "RUA RUI BARBOSA, 1937 CASA - LOT. MIMOSO DO OESTE QD. 65 LT. 03 A 05", "tipo": "COTA ÚNICA", "valor": 865.53, "vencimento": "30/04/2026", "obs": "-"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 33508.04, "vencimento": "08/05/2026", "obs": "01/36"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "20/05/2026", "obs": "02/36"},
+            {"estado": "TOCANTINS", "contribuinte": "SIDNEI HOFFMANN", "insc": "1.329.00017.00054.0", "end": "RUA ROSARIO MANDUCA, Qd.: 0017, Lt.: 0054", "tipo": "COTA ÚNICA", "valor": 230.14, "vencimento": "15/06/2026", "obs": "-"},
+            {"estado": "TOCANTINS", "contribuinte": "SIDNEI HOFFMANN", "insc": "1.329.00017.00055.0", "end": "RUA ROSARIO MANDUCA, Qd.: 0017, Lt.: 0055", "tipo": "COTA ÚNICA", "valor": 287.10, "vencimento": "15/06/2026", "obs": "-"},
+            {"estado": "TOCANTINS", "contribuinte": "SIDNEI HOFFMANN", "insc": "1.329.00035.00027.0", "end": "RUA VALDEMAR MONTEIRO, Qd.: 0035, Lt.: 0027", "tipo": "COTA ÚNICA", "valor": 295.52, "vencimento": "15/06/2026", "obs": "-"},
+            {"estado": "TOCANTINS", "contribuinte": "SIDNEI HOFFMANN", "insc": "1.634.00003.00016.0", "end": "ALAMEDA ILHÉUS, Qd.: 0003, Lt.: 0016", "tipo": "COTA ÚNICA", "valor": 639.89, "vencimento": "15/06/2026", "obs": "-"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "22/06/2026", "obs": "03/36"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "20/07/2026", "obs": "04/36"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "20/08/2026", "obs": "05/36"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "21/09/2026", "obs": "06/36"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "20/10/2026", "obs": "07/36"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "20/11/2026", "obs": "08/36"},
+            {"estado": "BAHIA", "contribuinte": "SIDNEI HOFFMANN", "insc": "01872/2026", "end": "-", "tipo": "PARCELAMENTO", "valor": 3717.95, "vencimento": "21/12/2026", "obs": "09/36"}
+        ];
+
+        const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+        function renderizarTabela() {
+            const tbody = document.getElementById('tabela-corpo');
+            tbody.innerHTML = '';
+
+            dadosIPTU.forEach(item => {
+                
+                let bStatus = '';
+                // Simulação de status dependendo do vencimento
+                if(item.vencimento.includes("04/2026") || item.vencimento.includes("05/2026")) {
+                    bStatus = `<span class="px-2 py-1 rounded text-[10px] uppercase font-bold status-proximo">Próximo</span>`;
+                } else {
+                    bStatus = `<span class="px-2 py-1 rounded text-[10px] uppercase font-bold status-pendente">A Vencer</span>`;
+                }
+
+                const infoParcela = item.obs !== '-' ? `<span class="text-[10px] font-bold text-[#c5a36b] ml-2">Parc. ${item.obs}</span>` : '';
+
+                const row = `
+                    <tr class="hover:bg-gray-50 border-b border-gray-100 transition">
+                        <td class="px-4 py-4 text-center">
+                            <div class="font-mono font-bold text-gray-900">${item.vencimento}</div>
+                            <div class="mt-1">${bStatus}</div>
+                        </td>
+                        <td class="px-4 py-4 font-bold text-[#004d2c] text-xs">${item.contribuinte}</td>
+                        <td class="px-4 py-4 text-xs">
+                            <div class="font-bold text-gray-800">Insc: ${item.insc}</div>
+                            <div class="text-[10px] text-gray-500 max-w-xs truncate" title="${item.end}">${item.end}</div>
+                        </td>
+                        <td class="px-4 py-4 text-xs font-semibold text-gray-600">${item.estado}</td>
+                        <td class="px-4 py-4 text-center text-xs font-semibold text-gray-600">
+                            ${item.tipo} ${infoParcela}
+                        </td>
+                        <td class="px-4 py-4 text-right font-mono font-black text-red-600 text-sm">
+                            ${formatCurrency(item.valor)}
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        function pesquisarTabela() {
+            const termo = document.getElementById('busca-iptu').value.toLowerCase();
+            const linhas = document.querySelectorAll(`#tabela-corpo tr`);
+            linhas.forEach(linha => {
+                linha.style.display = linha.innerText.toLowerCase().includes(termo) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
