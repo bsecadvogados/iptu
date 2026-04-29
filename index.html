@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-pt">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +11,8 @@
         body { background-color: var(--bsc-bg); font-family: 'Inter', sans-serif; }
         
         .status-pendente { background-color: #fef08a; color: #854d0e; } 
-        .status-proximo { background-color: #fed7aa; color: #9a3412; } 
+        .status-pago { background-color: #dcfce7; color: #166534; } 
+        .status-atrasado { background-color: #fee2e2; color: #991b1b; } 
         
         .login-bg { background: linear-gradient(135deg, #004d2c 0%, #002a18 100%); }
         
@@ -22,6 +23,49 @@
     </style>
 </head>
 <body class="text-gray-800 antialiased">
+
+    <div id="modal-pagamento" class="fixed inset-0 bg-black bg-opacity-60 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="bg-[#004d2c] px-6 py-4 flex justify-between items-center">
+                <h3 class="text-white font-bold text-lg">Gerir Pagamento</h3>
+                <button onclick="fecharModal()" class="text-white hover:text-gray-300 font-bold text-xl">&times;</button>
+            </div>
+            <form id="form-pagamento" onsubmit="salvarPagamento(event)" class="p-6 space-y-4">
+                <input type="hidden" id="inp-id">
+                
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                    <p class="text-xs text-gray-500 font-bold uppercase">Imóvel / Inscrição</p>
+                    <p class="text-sm font-bold text-[#004d2c]" id="modal-desc-imovel">...</p>
+                    <p class="text-xs text-gray-500 mt-1" id="modal-desc-venc">Vencimento: ...</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status do Pagamento</label>
+                    <select id="inp-status" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-[#004d2c] font-semibold">
+                        <option value="Pendente">Pendente (A Vencer)</option>
+                        <option value="Pago no Prazo">Pago (No Prazo)</option>
+                        <option value="Pago em Atraso">Pago (Em Atraso)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Data de Pagamento</label>
+                        <input type="date" id="inp-data-pag" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-[#004d2c]">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-red-500 uppercase mb-1">Multa / Juros (R$)</label>
+                        <input type="number" step="0.01" min="0" id="inp-juros" class="w-full border border-red-200 rounded-lg p-2.5 outline-none focus:border-red-500 text-red-600 font-mono font-bold bg-red-50" placeholder="0.00" value="0">
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3 border-t mt-4">
+                    <button type="button" onclick="fecharModal()" class="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-[#c5a36b] hover:bg-[#a3824f] text-white rounded-lg font-bold transition shadow-md">Salvar Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div id="login-screen" class="min-h-screen login-bg flex flex-col items-center justify-center px-4 fixed inset-0 z-[100]">
         <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
@@ -59,16 +103,16 @@
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-[#004d2c]">
-                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Total Consolidado 2026</h3>
+                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Total Original (2026)</h3>
                     <p class="text-3xl font-black text-[#004d2c]">R$ 82.434,89</p>
                 </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-[#c5a36b]">
-                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Montante Filtrado</h3>
-                    <p class="text-3xl font-black text-[#c5a36b]" id="resumo-filtrado">R$ 0,00</p>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-green-500">
+                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Total Pago (C/ Juros)</h3>
+                    <p class="text-3xl font-black text-green-600" id="resumo-pago">R$ 0,00</p>
                 </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-gray-400">
-                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Imóveis Registados</h3>
-                    <p class="text-3xl font-black text-gray-800">10 <span class="text-sm font-normal text-gray-500">Unidades</span></p>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-yellow-500">
+                    <h3 class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Pendente a Pagar</h3>
+                    <p class="text-3xl font-black text-yellow-600" id="resumo-pendente">R$ 0,00</p>
                 </div>
             </div>
 
@@ -88,12 +132,11 @@
                     <table class="w-full text-left text-sm text-gray-600">
                         <thead class="bg-gray-50 text-[#004d2c] uppercase font-black text-[10px] tracking-wider border-b">
                             <tr>
-                                <th class="px-4 py-3">Vencimento</th>
+                                <th class="px-4 py-3">Status / Vencimento</th>
                                 <th class="px-4 py-3">Imóvel / Inscrição</th>
-                                <th class="px-4 py-3">Contribuinte</th>
-                                <th class="px-4 py-3 text-center">Modalidade</th>
-                                <th class="px-4 py-3 text-right">Valor Bruto</th>
-                                <th class="px-4 py-3 text-center">Documento</th>
+                                <th class="px-4 py-3 text-center">Tipo</th>
+                                <th class="px-4 py-3 text-right">Valor Final</th>
+                                <th class="px-4 py-3 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="tabela-corpo" class="divide-y divide-gray-100">
@@ -107,38 +150,38 @@
 
     <script>
         const SECRET_KEY = "HOFFMANN2026";
+        const DB_KEY = "iptu_hoffmann_db_v3";
         
-        const dadosIPTU = [
-            // Renita Hoffmann - LEM
-            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "600900321001", end: "RUA DORIVAL CAYMMI I, 321", tipo: "COTA ÚNICA", valor: 665.10, arquivo: "boletos/IPTU Renita - RUA DORIVAL CAYMMI I, 321 CASA - LOT. MIMOSO DO OESTE QD. 87   LT. 09E10.pdf"},
-            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "704201264001", end: "RUA 13 DE MAIO, 1264", tipo: "COTA ÚNICA", valor: 1235.10, arquivo: "boletos/IPTU Renita - RUA 13 DE MAIO, 1264 CASA - LOT. JARDIM PARASO FASE III QD. 104  LT. 09.pdf"},
-            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "704800306001", end: "RUA GLAUBER ROCHA, 306 (CASA)", tipo: "COTA ÚNICA", valor: 1046.34, arquivo: "boletos/IPTU Renita - RUA GLAUBER ROCHA, 306 CASA - LOT. JARDIM PARASO FASE I QD. 10   LT. 04.pdf"},
-            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "704800306002", end: "RUA GLAUBER ROCHA, 306 (LOTE)", tipo: "COTA ÚNICA", valor: 190.28, arquivo: "boletos/IPTU Renita 2 - RUA GLAUBER ROCHA, 306 LOT. JARDIM PARASO FASE I QD. 10   LT. 04.pdf"},
-            
-            // Sidnei Hoffmann - LEM
-            {vencimento: "30/04/2026", contribuinte: "SIDNEI HOFFMANN", insc: "600501937001", end: "RUA RUI BARBOSA, 1937 (COMÉRCIO)", tipo: "COTA ÚNICA", valor: 13728.25, arquivo: "boletos/IPTU Sidnei - RUA RUI BARBOSA, 1937 COMERCIO - LOT. MIMOSO DO OESTE QD. 65   LT. 03 A 05.pdf"},
-            {vencimento: "30/04/2026", contribuinte: "SIDNEI HOFFMANN", insc: "600501937002", end: "RUA RUI BARBOSA, 1937 (CASA)", tipo: "COTA ÚNICA", valor: 865.53, arquivo: "boletos/IPTU Sidnei - RUA RUI BARBOSA, 1937 CASA - LOT. MIMOSO DO OESTE QD. 65   LT. 03 A 05.pdf"},
-            
-            // Sidnei Hoffmann - Porto Nacional
-            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.329.00017.00054.0", end: "RUA ROSARIO MANDUCA, Qd. 17 Lt. 54", tipo: "COTA ÚNICA", valor: 230.14, arquivo: "boletos/IPTU Sidnei - RUA ROSARIO MANDUCA, Qd. 0017, Lt. 0054.pdf"},
-            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.329.00017.00055.0", end: "RUA ROSARIO MANDUCA, Qd. 17 Lt. 55", tipo: "COTA ÚNICA", valor: 287.10, arquivo: "boletos/IPTU Sidnei - RUA ROSARIO MANDUCA, Qd. 0017, Lt. 0055.pdf"},
-            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.329.00035.00027.0", end: "RUA VALDEMAR MONTEIRO, Qd. 35 Lt. 27", tipo: "COTA ÚNICA", valor: 295.52, arquivo: "boletos/IPTU Sidnei - RUA VALDEMAR MONTEIRO, Qd. 0035, Lt. 0027.pdf"},
-            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.634.00003.00016.0", end: "ALAMEDA ILHÉUS, Qd. 03 Lt. 16", tipo: "COTA ÚNICA", valor: 639.89, arquivo: "boletos/IPTU Sidnei - ALAMEDA ILHUS, Qd. 0003, Lt. 0016.pdf"},
-            
-            // Parcelamento Sidnei - 01872/2026
-            {vencimento: "08/05/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 01/36", valor: 33508.04, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 01-36.pdf"},
-            {vencimento: "20/05/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 02/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 02-36.pdf"},
-            {vencimento: "22/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 03/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 03-36.pdf"},
-            {vencimento: "20/07/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 04/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 04-36.pdf"},
-            {vencimento: "20/08/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 05/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 05-36.pdf"},
-            {vencimento: "21/09/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 06/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 06-36.pdf"},
-            {vencimento: "20/10/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 07/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 07-36.pdf"},
-            {vencimento: "20/11/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 08/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 08-36.pdf"},
-            {vencimento: "21/12/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "ACORDO PARCELAMENTO", tipo: "PARCELA 09/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 09-36.pdf"}
+        // Dados originais que servem de base na primeira vez que o sistema abre
+        const dadosOriginais = [
+            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "600900321001", end: "RUA DORIVAL CAYMMI I, 321 CASA - LOT. MIMOSO DO OESTE QD. 87 LT. 09E10", tipo: "COTA ÚNICA", valor: 665.10, arquivo: "boletos/IPTU Renita - RUA DORIVAL CAYMMI I, 321 CASA - LOT. MIMOSO DO OESTE QD. 87   LT. 09E10.pdf"},
+            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "704201264001", end: "RUA 13 DE MAIO, 1264 CASA - LOT. JARDIM PARAÍSO FASE III QD. 104 LT. 09", tipo: "COTA ÚNICA", valor: 1235.10, arquivo: "boletos/IPTU Renita - RUA 13 DE MAIO, 1264 CASA - LOT. JARDIM PARASO FASE III QD. 104  LT. 09.pdf"},
+            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "704800306001", end: "RUA GLAUBER ROCHA, 306 CASA - LOT. JARDIM PARAÍSO FASE I QD. 10 LT. 04", tipo: "COTA ÚNICA", valor: 1046.34, arquivo: "boletos/IPTU Renita - RUA GLAUBER ROCHA, 306 CASA - LOT. JARDIM PARASO FASE I QD. 10   LT. 04.pdf"},
+            {vencimento: "30/04/2026", contribuinte: "RENITA HOFFMANN", insc: "704800306002", end: "RUA GLAUBER ROCHA, 306 LOT. JARDIM PARAÍSO FASE I QD. 10 LT. 04", tipo: "COTA ÚNICA", valor: 190.28, arquivo: "boletos/IPTU Renita 2 - RUA GLAUBER ROCHA, 306 LOT. JARDIM PARASO FASE I QD. 10   LT. 04.pdf"},
+            {vencimento: "30/04/2026", contribuinte: "SIDNEI HOFFMANN", insc: "600501937001", end: "RUA RUI BARBOSA, 1937 COMERCIO - LOT. MIMOSO DO OESTE QD. 65 LT. 03 A 05", tipo: "COTA ÚNICA", valor: 13728.25, arquivo: "boletos/IPTU Sidnei - RUA RUI BARBOSA, 1937 COMERCIO - LOT. MIMOSO DO OESTE QD. 65   LT. 03 A 05.pdf"},
+            {vencimento: "30/04/2026", contribuinte: "SIDNEI HOFFMANN", insc: "600501937002", end: "RUA RUI BARBOSA, 1937 CASA - LOT. MIMOSO DO OESTE QD. 65 LT. 03 A 05", tipo: "COTA ÚNICA", valor: 865.53, arquivo: "boletos/IPTU Sidnei - RUA RUI BARBOSA, 1937 CASA - LOT. MIMOSO DO OESTE QD. 65   LT. 03 A 05.pdf"},
+            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.329.00017.00054.0", end: "RUA ROSARIO MANDUCA, Qd. 0017, Lt. 0054", tipo: "COTA ÚNICA", valor: 230.14, arquivo: "boletos/IPTU Sidnei - RUA ROSARIO MANDUCA, Qd. 0017, Lt. 0054.pdf"},
+            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.329.00017.00055.0", end: "RUA ROSARIO MANDUCA, Qd. 0017, Lt. 0055", tipo: "COTA ÚNICA", valor: 287.10, arquivo: "boletos/IPTU Sidnei - RUA ROSARIO MANDUCA, Qd. 0017, Lt. 0055.pdf"},
+            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.329.00035.00027.0", end: "RUA VALDEMAR MONTEIRO, Qd. 0035, Lt. 0027", tipo: "COTA ÚNICA", valor: 295.52, arquivo: "boletos/IPTU Sidnei - RUA VALDEMAR MONTEIRO, Qd. 0035, Lt. 0027.pdf"},
+            {vencimento: "15/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "1.634.00003.00016.0", end: "ALAMEDA ILHÉUS, Qd. 0003, Lt. 0016", tipo: "COTA ÚNICA", valor: 639.89, arquivo: "boletos/IPTU Sidnei - ALAMEDA ILHUS, Qd. 0003, Lt. 0016.pdf"},
+            {vencimento: "08/05/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 01/36", valor: 33508.04, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 01-36.pdf"},
+            {vencimento: "20/05/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 02/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 02-36.pdf"},
+            {vencimento: "22/06/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 03/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 03-36.pdf"},
+            {vencimento: "20/07/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 04/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 04-36.pdf"},
+            {vencimento: "20/08/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 05/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 05-36.pdf"},
+            {vencimento: "21/09/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 06/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 06-36.pdf"},
+            {vencimento: "20/10/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 07/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 07-36.pdf"},
+            {vencimento: "20/11/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 08/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 08-36.pdf"},
+            {vencimento: "21/12/2026", contribuinte: "SIDNEI HOFFMANN", insc: "01872/2026", end: "-", tipo: "PARCELA 09/36", valor: 3717.95, arquivo: "boletos/Parcelamento  01872-2026 - Sidnei Hoffmann - 09-36.pdf"}
         ];
+
+        let database = [];
 
         const formatCcy = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+        // ==========================================
+        // AUTENTICAÇÃO E INICIALIZAÇÃO
+        // ==========================================
         function authenticate() {
             if(document.getElementById('pwd-input').value === SECRET_KEY) {
                 sessionStorage.setItem('bsc_sess', 'active');
@@ -150,15 +193,90 @@
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-content').classList.remove('hidden');
             setTimeout(() => document.getElementById('app-content').classList.remove('opacity-0'), 50);
+            
+            inicializarBD();
             popularFiltro();
             aplicarFiltros();
         }
 
         function logout() { sessionStorage.removeItem('bsc_sess'); window.location.reload(); }
 
+        // ==========================================
+        // BASE DE DADOS E LÓGICA DE STATUS
+        // ==========================================
+        function inicializarBD() {
+            const dbSalvo = localStorage.getItem(DB_KEY);
+            if(dbSalvo) {
+                database = JSON.parse(dbSalvo);
+            } else {
+                // Primeira vez: mapeia os dados estáticos adicionando os campos editáveis
+                database = dadosOriginais.map((item, index) => ({
+                    ...item,
+                    id: index + 1,
+                    status: 'Pendente',
+                    juros: 0,
+                    dataPag: ''
+                }));
+                salvarBD();
+            }
+        }
+
+        function salvarBD() {
+            localStorage.setItem(DB_KEY, JSON.stringify(database));
+        }
+
+        // ==========================================
+        // MODAL (GERIR PAGAMENTO)
+        // ==========================================
+        function abrirModal(id) {
+            const item = database.find(i => i.id === id);
+            if(!item) return;
+
+            document.getElementById('inp-id').value = item.id;
+            document.getElementById('modal-desc-imovel').innerText = `${item.contribuinte} - INSC: ${item.insc}`;
+            document.getElementById('modal-desc-venc').innerText = `Vencimento Original: ${item.vencimento} | Valor: ${formatCcy(item.valor)}`;
+            
+            document.getElementById('inp-status').value = item.status;
+            document.getElementById('inp-juros').value = item.juros || 0;
+            document.getElementById('inp-data-pag').value = item.dataPag ? item.dataPag.split('/').reverse().join('-') : '';
+
+            document.getElementById('modal-pagamento').classList.remove('hidden');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal-pagamento').classList.add('hidden');
+        }
+
+        function salvarPagamento(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('inp-id').value);
+            const status = document.getElementById('inp-status').value;
+            const juros = parseFloat(document.getElementById('inp-juros').value) || 0;
+            const dataInput = document.getElementById('inp-data-pag').value;
+            
+            let dataFormatada = '';
+            if(dataInput) {
+                const p = dataInput.split('-');
+                dataFormatada = `${p[2]}/${p[1]}/${p[0]}`;
+            }
+
+            const index = database.findIndex(i => i.id === id);
+            if(index !== -1) {
+                database[index].status = status;
+                database[index].juros = juros;
+                database[index].dataPag = dataFormatada;
+                salvarBD();
+                aplicarFiltros();
+                fecharModal();
+            }
+        }
+
+        // ==========================================
+        // FILTROS E RENDERIZAÇÃO DA TABELA
+        // ==========================================
         function popularFiltro() {
             const select = document.getElementById('filtro-mes');
-            const meses = [...new Set(dadosIPTU.map(d => {
+            const meses = [...new Set(database.map(d => {
                 const p = d.vencimento.split('/');
                 return `${p[1]}/${p[2]}`;
             }))].sort();
@@ -170,30 +288,63 @@
             const mes = document.getElementById('filtro-mes').value;
             const tbody = document.getElementById('tabela-corpo');
             tbody.innerHTML = '';
-            let soma = 0;
+            
+            let totalPago = 0;
+            let totalPendente = 0;
 
-            dadosIPTU.forEach(d => {
+            database.forEach(d => {
+                // Cálculo dos totais
+                const valorFinal = d.valor + (d.juros || 0);
+                if(d.status.includes('Pago')) {
+                    totalPago += valorFinal;
+                } else {
+                    totalPendente += valorFinal;
+                }
+
+                // Lógica de Filtro
                 const mesItem = d.vencimento.split('/')[1] + '/' + d.vencimento.split('/')[2];
                 const matchBusca = (d.contribuinte + d.end + d.insc).toLowerCase().includes(termo);
                 const matchMes = (mes === 'Todos' || mes === mesItem);
 
                 if(matchBusca && matchMes) {
-                    soma += d.valor;
+                    
+                    // Configuração Visual do Status
+                    let badgeClass = 'status-pendente';
+                    if(d.status === 'Pago no Prazo') badgeClass = 'status-pago';
+                    if(d.status === 'Pago em Atraso') badgeClass = 'status-atrasado';
+                    
+                    const exibeJuros = d.juros > 0 ? `<div class="text-[10px] text-red-500 font-bold">+ ${formatCcy(d.juros)} (Multa)</div>` : '';
+                    const exibeData = d.dataPag ? `<div class="text-[10px] text-gray-500 mt-1">Pago em: ${d.dataPag}</div>` : '';
+
                     tbody.insertAdjacentHTML('beforeend', `
                         <tr class="hover:bg-gray-50 border-b transition">
-                            <td class="px-4 py-4 font-mono font-bold text-gray-900">${d.vencimento}</td>
-                            <td class="px-4 py-4 text-xs font-bold">${d.end}<br><span class="text-[10px] text-gray-400 font-normal">INSC: ${d.insc}</span></td>
-                            <td class="px-4 py-4 text-xs font-bold text-[#004d2c]">${d.contribuinte}</td>
-                            <td class="px-4 py-4 text-center text-[10px] font-black uppercase text-gray-500">${d.tipo}</td>
-                            <td class="px-4 py-4 text-right font-black text-red-600">${formatCcy(d.valor)}</td>
                             <td class="px-4 py-4 text-center">
-                                <a href="${d.arquivo}" target="_blank" class="bg-[#c5a36b] text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-[#b08d55] transition shadow-sm">Liquidar</a>
+                                <div class="font-mono font-bold text-gray-900 mb-1">${d.vencimento}</div>
+                                <span class="px-2 py-1 rounded text-[10px] uppercase font-bold ${badgeClass}">${d.status}</span>
+                                ${exibeData}
+                            </td>
+                            <td class="px-4 py-4 text-xs">
+                                <div class="font-bold text-[#004d2c]">${d.contribuinte}</div>
+                                <div class="font-bold text-gray-700 mt-1">${d.end}</div>
+                                <div class="text-[10px] text-gray-400 font-normal uppercase tracking-widest mt-1">INSC: ${d.insc}</div>
+                            </td>
+                            <td class="px-4 py-4 text-center text-[10px] font-black uppercase text-gray-500">${d.tipo}</td>
+                            <td class="px-4 py-4 text-right">
+                                <div class="font-black text-gray-900 text-sm">${formatCcy(valorFinal)}</div>
+                                ${exibeJuros}
+                            </td>
+                            <td class="px-4 py-4 text-center space-y-2">
+                                <button onclick="abrirModal(${d.id})" class="w-full bg-[#004d2c] text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-[#003820] transition shadow-sm mb-1 block text-center">Gerir</button>
+                                <a href="${d.arquivo}" target="_blank" class="w-full bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-gray-300 transition shadow-sm block text-center" download>Boleto</a>
                             </td>
                         </tr>
                     `);
                 }
             });
-            document.getElementById('resumo-filtrado').innerText = formatCcy(soma);
+
+            // Atualiza os painéis de resumo
+            document.getElementById('resumo-pago').innerText = formatCcy(totalPago);
+            document.getElementById('resumo-pendente').innerText = formatCcy(totalPendente);
         }
 
         if(sessionStorage.getItem('bsc_sess') === 'active') unlock();
